@@ -7,6 +7,7 @@ from typing import List
 
 import numpy as np
 import requests
+import certifi
 import fitz  # PyMuPDF - for PDF text extraction
 from docx import Document as DocxDocument  # python-docx - for DOCX text extraction
 from openai import OpenAI
@@ -19,7 +20,7 @@ from config import (
     CHAT_PROVIDER,
     HF_TOKEN,
     RAG_TOP_K,
-    MONGODB_URI,
+    MONGODB_URI as CONFIG_MONGODB_URI,
     MONGODB_DB_NAME,
     MONGODB_COLLECTION,
     MONGODB_INDEX_NAME,
@@ -43,6 +44,7 @@ _openai_client = OpenAI(
 
 _db_client = None
 _db_collection = None
+MONGODB_URI = os.getenv("MONGODB_URI", CONFIG_MONGODB_URI)
 
 
 def _validate_mongodb_uri(uri: str) -> str | None:
@@ -72,7 +74,12 @@ def _get_collection():
         return None
         
     try:
-        _db_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+        _db_client = MongoClient(
+            MONGODB_URI,
+            tls=True,
+            tlsCAFile=certifi.where(),
+            serverSelectionTimeoutMS=5000,
+        )
         # Force server selection early so startup surfaces URI/DNS issues immediately.
         _db_client.admin.command("ping")
         db = _db_client[MONGODB_DB_NAME]
